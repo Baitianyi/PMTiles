@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>中国行政区划地图</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- MapLibre GL CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+    }
+    /* 缩放级别信息面板 */
+    #zoom-info {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="zoom-info">Zoom: —</div>
+
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
+  <!-- PMTiles JS -->
+  <script src="https://unpkg.com/pmtiles@2.10.0/dist/index.js"></script>
+
+  <script>
+    // 注册 pmtiles 协议
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+
+    // 创建地图
+    const map = new maplibregl.Map({
+      container: "map",
+      center: [105, 35],
+      zoom: 3,
+      minZoom: 1,   // 限制最小缩放
+      maxZoom: 12,  // 限制最大缩放
+      style: {
+        version: 8,
+        sources: {
+          china_source: {
+            type: "vector",
+            url: "pmtiles://china_12.pmtiles"
+          }
+        },
+        layers: [
+          {
+            id: "china-fill",
+            type: "fill",
+            source: "china_source",
+            "source-layer": "china_final",
+            paint: {
+              "fill-color": "#deebf7",
+              "fill-outline-color": "#9ecae1",
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            id: "china-outline",
+            type: "line",
+            source: "china_source",
+            "source-layer": "china_final",
+            paint: {
+              "line-color": "#3182bd",
+              "line-width": 1
+            }
+          }
+        ]
+      }
+    });
+
+    // 添加缩放和平移控件
+    map.addControl(new maplibregl.NavigationControl());
+
+    // 实时更新缩放级别
+    const zoomInfo = document.getElementById('zoom-info');
+
+    function updateZoom() {
+      const zoom = map.getZoom().toFixed(2);
+      zoomInfo.textContent = `Zoom: ${zoom}`;
+    }
+
+    map.on('load', () => {
+      updateZoom();
+    });
+
+    map.on('zoom', () => {
+      updateZoom();
+    });
+
+    // 点击弹出省份名称
+    map.on('click', 'china-fill', (e) => {
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ['china-fill']
+      });
+
+      if (!features.length) return;
+
+      const feature = features[0];
+      const name = feature.properties.name;
+
+      new maplibregl.Popup()
+        .setHTML(`<strong>${name}</strong>`)
+        .setLngLat(e.lngLat)
+        .addTo(map);
+    });
+  </script>
+</body>
+</html>
